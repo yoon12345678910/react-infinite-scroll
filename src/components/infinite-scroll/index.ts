@@ -1,1 +1,1 @@
-export * from './InfiniteScrollByIntersectionObserver';
+export * from './IntersectionObserver';
