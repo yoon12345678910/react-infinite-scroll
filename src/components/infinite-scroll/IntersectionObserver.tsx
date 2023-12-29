@@ -1,37 +1,14 @@
-import { useEffect, useMemo } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { useInView } from 'react-intersection-observer';
 
-import { CommentList } from '../comment/index';
-import type { CommentApiResponse } from '../../types/types';
-import { FETCH_SIZE } from '../../constants/constants';
-import { fetchData } from '../../data/makeData';
+import useFetchMockData from '../../hooks/useFetchMockData';
 
 export const IntersectionObserver = () => {
   const { ref, inView } = useInView();
 
-  const { data, isLoading, isFetching, fetchNextPage } = useInfiniteQuery<CommentApiResponse>({
+  const { flatData, totalDBRowCount, totalFetched, hasMore, isLoading, isFetching, fetchNextPage } = useFetchMockData({
     queryKey: ['intersection-observer'],
-    queryFn: async ({ pageParam }) => {
-      const start = (pageParam as number) * FETCH_SIZE;
-      const fetchedData = await fetchData(start, FETCH_SIZE);
-      return fetchedData;
-    },
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.data.length === 0) {
-        return undefined;
-      }
-      return allPages.length;
-    },
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
   });
-
-  const flatData = useMemo(() => data?.pages?.flatMap((page) => page.data) ?? [], [data]);
-  const totalDBRowCount = data?.pages?.[0]?.meta?.totalRowCount ?? 0;
-  const totalFetched = flatData.length ?? 0;
-  const hasMore = totalFetched < totalDBRowCount;
 
   useEffect(() => {
     if (inView && hasMore) {
@@ -45,7 +22,17 @@ export const IntersectionObserver = () => {
         <h1 className="text-xl">intersection observer</h1>
       </div>
       <div className="overflow-auto border border-solid border-gray-500 h-[calc(100vh-90px)]">
-        <CommentList isLoading={isLoading || isFetching} comments={flatData} setRef={ref} />
+        <div className="list-none">
+          {flatData.map((comment) => (
+            <li key={comment.id} ref={ref} className="p-5 mb-3 bg-gray-200 border border-solid border-gray-400">
+              <span>
+                [{comment.no}] {comment.email}
+              </span>
+              <p>{comment.body}</p>
+            </li>
+          ))}
+          {(isLoading || isFetching) && <li className="px-3 pb-3 text-center">Loading...</li>}
+        </div>
       </div>
       <div className="p-2.5">
         Fetched <strong>{totalFetched}</strong> of <strong>{totalDBRowCount}</strong> Rows.
