@@ -1,21 +1,26 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import { CellMeasurerCache, CellMeasurer, InfiniteLoader, AutoSizer, List, ListRowRenderer } from 'react-virtualized';
 
 import { Comment } from '../comment/index';
-import useFetchMockData from '../../hooks/useFetchMockData';
+import { useFetchMockData, usePrevious } from '../../hooks/index';
 
-const cache = new CellMeasurerCache({
-  fixedWidth: true,
-  defaultHeight: 100,
-});
 export const Windowing = () => {
+  const cache = useMemo(
+    () =>
+      new CellMeasurerCache({
+        fixedWidth: true,
+      }),
+    [],
+  );
   const { flatData, totalDBRowCount, totalFetched, hasMore, isFetching, fetchNextPage } = useFetchMockData({
     queryKey: ['windowing'],
   });
 
+  const previousDataLength = usePrevious(flatData.length);
+
   const rowCount = flatData.length + (hasMore ? 1 : 0);
 
-  // once the user has scrolled within {n} items from the bottom of the list, fetch more data if there is any
+  // 사용자가 목록의 맨 아래에서 {n}개 항목을 스크롤한 후 더 많은 데이터를 가져옵니다
   const isRowLoaded = ({ index }: { index: number }) => !hasMore || index < flatData.length;
 
   const loadMore = useCallback(() => {
@@ -32,6 +37,7 @@ export const Windowing = () => {
     ) : (
       <div className="px-3 pb-3 text-center">Loading...</div>
     );
+
     return (
       <CellMeasurer cache={cache} key={key} columnIndex={0} rowIndex={index} parent={parent}>
         {({ registerChild }) => (
@@ -42,6 +48,12 @@ export const Windowing = () => {
       </CellMeasurer>
     );
   };
+
+  useEffect(() => {
+    if (previousDataLength && flatData.length !== previousDataLength) {
+      cache.clear(previousDataLength, 0);
+    }
+  }, [flatData.length]);
 
   return (
     <div className="w-96">
